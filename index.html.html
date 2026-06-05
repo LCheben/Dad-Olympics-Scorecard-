@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dad Olympics Scoreboard</title>
+  <style>
+    :root {
+      --bg: #111827;
+      --panel: #1f2937;
+      --panel2: #374151;
+      --text: #f9fafb;
+      --muted: #d1d5db;
+      --accent: #f59e0b;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --border: #4b5563;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #1f2937, #111827);
+      border: 2px solid var(--accent);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 4rem);
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .hero p {
+      color: var(--muted);
+      margin: 8px 0 0;
+      font-size: 1.1rem;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: bold;
+      cursor: pointer;
+      background: var(--accent);
+      color: #111827;
+    }
+
+    button.secondary {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.danger {
+      background: var(--bad);
+      color: white;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1050px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background: var(--panel2);
+      color: var(--text);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td:first-child, th:first-child {
+      text-align: left;
+      min-width: 170px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    input[type="number"] {
+      text-align: center;
+    }
+
+    .total {
+      font-weight: bold;
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
+
+    .leaderboard {
+      display: grid;
+      gap: 10px;
+    }
+
+    .rank-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .rank-card:first-child {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .rank {
+      font-weight: bold;
+      color: var(--accent);
+      margin-right: 10px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .note {
+      background: #0b1220;
+      border-left: 4px solid var(--accent);
+      padding: 12px;
+      border-radius: 8px;
+      color: var(--muted);
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: black;
+      }
+      .hero, .panel {
+        border-color: #999;
+        background: white;
+        color: black;
+      }
+      .hero h1, .total, .rank {
+        color: black;
+      }
+      input {
+        color: black;
+        background: white;
+        border: 1px solid #999;
+      }
+      button, .controls {
+        display: none;
+      }
+      th {
+        background: #eee;
+        color: black;
+      }
+      .rank-card {
+        background: white;
+        color: black;
+      }
+      .small, .note {
+        color: black;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>Dad Olympics</h1>
+      <h2>Scoreboard</h2>
+      <p>8-team version · enter scores as events finish · totals update automatically</p>
+    </section>
+
+    <section class="panel controls">
+      <div>
+        <strong>Scoring note:</strong>
+        <span class="small">Bucket Golf uses golf notation: enter -2 for two under par and the app adds +2 points. Enter +3 for three over par and the app subtracts 3 points.</span>
+      </div>
+      <div>
+        <button onclick="window.print()">Print</button>
+        <button class="secondary" onclick="saveData()">Save</button>
+        <button class="danger" onclick="resetAll()">Reset All</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Team Scores</h2>
+      <div class="table-wrap">
+        <table id="scoreTable">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Players</th>
+              <th>Cornhole</th>
+              <th>Kubb</th>
+              <th>.22 Shoot</th>
+              <th>Hatchet Throw</th>
+              <th>Bucket Golf<br><span class="small">score vs par</span></th>
+              <th>Mystery Event</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <p class="small">
+        Tip: Cornhole and Kubb are cumulative. For Bucket Golf, type the actual score relative to par: -1, -2, 0, +1, +3, etc.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Leaderboard</h2>
+      <div id="leaderboard" class="leaderboard"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Event Scoring Reference</h2>
+      <div class="note">
+        <p><strong>Cornhole:</strong> Cumulative points. First to 11 wins each game. Best of 3. Winning game score is 11; losing team keeps its points.</p>
+        <p><strong>Kubb:</strong> Cumulative points. Each kubb = 1 point. King = 5 points. Max 10 per game. Best of 3.</p>
+        <p><strong>.22 Shoot:</strong> Each player gets 5 shots. Add both players’ scores together.</p>
+        <p><strong>Hatchet Throw:</strong> Each player gets 3 warm-ups, then 6 scored throws. Add both players’ scores together.</p>
+        <p><strong>Bucket Golf:</strong> Scramble format. Under par adds points. Over par subtracts points. Example: -2 becomes +2; +3 becomes -3.</p>
+        <p><strong>Mystery Event:</strong> Trampoline toss. Add both teammates’ successful throw points together.</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const TEAM_COUNT = 8;
+    const storageKey = "dadOlympicsScoreboard8TeamV1";
+
+    const defaultTeams = Array.from({ length: TEAM_COUNT }, (_, i) => ({
+      team: `Team ${i + 1}`,
+      players: "",
+      cornhole: "",
+      kubb: "",
+      shoot22: "",
+      hatchet: "",
+      bucketGolf: "",
+      mystery: ""
+    }));
+
+    let teams = loadData();
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const normalized = [...parsed];
+            while (normalized.length < TEAM_COUNT) {
+              normalized.push({
+                team: `Team ${normalized.length + 1}`,
+                players: "",
+                cornhole: "",
+                kubb: "",
+                shoot22: "",
+                hatchet: "",
+                bucketGolf: "",
+                mystery: ""
+              });
+            }
+            return normalized.slice(0, TEAM_COUNT);
+          }
+        }
+      } catch (error) {
+        console.warn("Could not load saved data:", error);
+      }
+      return defaultTeams;
+    }
+
+    function saveData() {
+      localStorage.setItem(storageKey, JSON.stringify(teams));
+      render();
+    }
+
+    function resetAll() {
+      const confirmed = confirm("Reset all team names and scores?");
+      if (!confirmed) return;
+      teams = JSON.parse(JSON.stringify(defaultTeams));
+      localStorage.removeItem(storageKey);
+      render();
+    }
+
+    function num(value) {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function bucketGolfPoints(value) {
+      const scoreVsPar = num(value);
+      return scoreVsPar * -1;
+    }
+
+    function teamTotal(team) {
+      return (
+        num(team.cornhole) +
+        num(team.kubb) +
+        num(team.shoot22) +
+        num(team.hatchet) +
+        bucketGolfPoints(team.bucketGolf) +
+        num(team.mystery)
+      );
+    }
+
+    function updateTeam(index, field, value) {
+      teams[index][field] = value;
+      localStorage.setItem(storageKey, JSON.stringify(teams));
+      render();
+    }
+
+    function renderTable() {
+      const body = document.getElementById("tableBody");
+      body.innerHTML = "";
+
+      teams.forEach((team, index) => {
+        const row = document.createElement("tr");
+        const bucketDisplay = bucketGolfPoints(team.bucketGolf);
+        row.innerHTML = `
+          <td><input value="${escapeHtml(team.team)}" onchange="updateTeam(${index}, 'team', this.value)" /></td>
+          <td><input value="${escapeHtml(team.players)}" onchange="updateTeam(${index}, 'players', this.value)" placeholder="Player 1 / Player 2" /></td>
+          <td><input type="number" value="${escapeHtml(team.cornhole)}" onchange="updateTeam(${index}, 'cornhole', this.value)" /></td>
+          <td><input type="number" value="${escapeHtml(team.kubb)}" onchange="updateTeam(${index}, 'kubb', this.value)" /></td>
+          <td><input type="number" value="${escapeHtml(team.shoot22)}" onchange="updateTeam(${index}, 'shoot22', this.value)" /></td>
+          <td><input type="number" value="${escapeHtml(team.hatchet)}" onchange="updateTeam(${index}, 'hatchet', this.value)" /></td>
+          <td>
+            <input type="number" value="${escapeHtml(team.bucketGolf)}" onchange="updateTeam(${index}, 'bucketGolf', this.value)" placeholder="-2, 0, +3" />
+            <div class="small">points: ${bucketDisplay > 0 ? "+" : ""}${bucketDisplay}</div>
+          </td>
+          <td><input type="number" value="${escapeHtml(team.mystery)}" onchange="updateTeam(${index}, 'mystery', this.value)" /></td>
+          <td class="total">${teamTotal(team)}</td>
+        `;
+        body.appendChild(row);
+      });
+    }
+
+    function renderLeaderboard() {
+      const leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = "";
+
+      const ranked = teams
+        .map((team, index) => ({
+          ...team,
+          index,
+          total: teamTotal(team)
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      ranked.forEach((team, i) => {
+        const card = document.createElement("div");
+        card.className = "rank-card";
+        const players = team.players ? `<div class="small">${escapeHtml(team.players)}</div>` : "";
+        card.innerHTML = `
+          <div>
+            <span class="rank">#${i + 1}</span>
+            <strong>${escapeHtml(team.team || `Team ${team.index + 1}`)}</strong>
+            ${players}
+          </div>
+          <div class="total">${team.total} pts</div>
+        `;
+        leaderboard.appendChild(card);
+      });
+    }
+
+    function render() {
+      renderTable();
+      renderLeaderboard();
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    render();
+  </script>
+</body>
+</html>
