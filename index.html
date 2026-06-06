@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dad Olympics Live Scoreboard</title>
+  <style>
+    :root {
+      --bg: #111827;
+      --panel: #1f2937;
+      --panel2: #374151;
+      --text: #f9fafb;
+      --muted: #d1d5db;
+      --accent: #f59e0b;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --border: #4b5563;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .hero {
+      background: linear-gradient(135deg, #1f2937, #111827);
+      border: 2px solid var(--accent);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 4rem);
+      letter-spacing: 2px;
+      margin: 0;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .hero h2 { margin: 6px 0 0; font-weight: normal; color: var(--muted); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #0b1220;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--bad); display: inline-block;
+    }
+    .dot.connected { background: var(--good); }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: bold;
+      cursor: pointer;
+      background: var(--accent);
+      color: #111827;
+      margin: 2px;
+    }
+    button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+    button.danger { background: var(--bad); color: white; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1050px; }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    th { background: var(--panel2); color: var(--text); }
+    td:first-child, th:first-child { text-align: left; min-width: 170px; }
+    input {
+      width: 100%;
+      padding: 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text);
+      font-size: 1rem;
+    }
+    input[type="number"] { text-align: center; }
+    .total {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .leaderboard { display: grid; gap: 10px; }
+    .rank-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .rank-card:first-child { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .rank { font-weight: bold; color: var(--accent); margin-right: 10px; }
+    .small { color: var(--muted); font-size: 0.88rem; line-height: 1.35; }
+    .note {
+      background: #0b1220;
+      border-left: 4px solid var(--accent);
+      padding: 12px;
+      border-radius: 8px;
+      color: var(--muted);
+    }
+    .mobile-note { display: none; }
+    @media (max-width: 700px) {
+      body { padding: 10px; }
+      .hero { padding: 16px; }
+      .panel { padding: 10px; }
+      .mobile-note { display: block; }
+    }
+    @media print {
+      body { background: white; color: black; }
+      .hero, .panel { border-color: #999; background: white; color: black; }
+      .hero h1, .total, .rank { color: black; }
+      input { color: black; background: white; border: 1px solid #999; }
+      button, .status { display: none; }
+      th { background: #eee; color: black; }
+      .rank-card { background: white; color: black; }
+      .small, .note { color: black; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>Dad Olympics</h1>
+      <h2>Live Scoreboard</h2>
+    </section>
+
+    <section class="panel status">
+      <div class="status-pill">
+        <span id="connectionDot" class="dot"></span>
+        <span id="connectionText">Connecting to Firebase...</span>
+      </div>
+      <div class="small">Live sync enabled. Text fields save when you leave the box. Score fields save shortly after typing.</div>
+      <div>
+        <button onclick="window.print()">Print</button>
+        <button class="secondary" onclick="seedTeams()">Set / Repair 8 Teams</button>
+        <button class="danger" onclick="resetAll()">Reset All Scores</button>
+      </div>
+    </section>
+
+    <section class="panel mobile-note">
+      <div class="note">On phones, scroll sideways on the table to see all events.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Team Scores</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Players</th>
+              <th>Cornhole</th>
+              <th>Kubb</th>
+              <th>.22 Shoot</th>
+              <th>Hatchet Throw</th>
+              <th>Bucket Golf<br><span class="small">score vs par</span></th>
+              <th>Mystery Event</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <p class="small">
+        Bucket Golf: enter <strong>-2</strong> for two under par and it adds +2 points. Enter <strong>+3</strong> for three over par and it subtracts 3 points.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Leaderboard</h2>
+      <div id="leaderboard" class="leaderboard"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Scoring Reference</h2>
+      <div class="note">
+        <p><strong>Cornhole:</strong> Cumulative score. First to 11 wins each game. Best of 3.</p>
+        <p><strong>Kubb:</strong> Each kubb = 1 point. King = 5 points. Max 10 per game. Best of 3.</p>
+        <p><strong>.22 Shoot:</strong> Each player gets 5 shots. Add both players' scores.</p>
+        <p><strong>Hatchet Throw:</strong> Each player gets 3 warm-ups, then 6 scored throws. Add both players' scores.</p>
+        <p><strong>Bucket Golf:</strong> Under par adds points. Over par subtracts points.</p>
+        <p><strong>Mystery Event:</strong> Trampoline toss. Add both teammates' successful throw points.</p>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+
+  <script>
+    const TEAM_COUNT = 8;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDUFHZlMHg8sGMqu-exrJcPJM9TT3jnns0",
+      authDomain: "dad-olympics.firebaseapp.com",
+      databaseURL: "https://dad-olympics-default-rtdb.firebaseio.com/",
+      projectId: "dad-olympics",
+      storageBucket: "dad-olympics.firebasestorage.app",
+      messagingSenderId: "920495280260",
+      appId: "1:920495280260:web:80c15451a221d9948af2d1",
+      measurementId: "G-T88RTH5063"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const teamsRef = db.ref("dadOlympics/teams");
+    const connectedRef = db.ref(".info/connected");
+
+    let teams = defaultTeams();
+    let debounceTimers = {};
+    let focusedKey = null;
+
+    function defaultTeams() {
+      return Array.from({ length: TEAM_COUNT }, (_, i) => ({
+        team: `Team ${i + 1}`,
+        players: "",
+        cornhole: "",
+        kubb: "",
+        shoot22: "",
+        hatchet: "",
+        bucketGolf: "",
+        mystery: ""
+      }));
+    }
+
+    function normalizeTeams(data) {
+      let arr = Array.isArray(data) ? data : defaultTeams();
+      arr = arr.map((team, i) => ({
+        team: team?.team ?? `Team ${i + 1}`,
+        players: team?.players ?? "",
+        cornhole: team?.cornhole ?? "",
+        kubb: team?.kubb ?? "",
+        shoot22: team?.shoot22 ?? "",
+        hatchet: team?.hatchet ?? "",
+        bucketGolf: team?.bucketGolf ?? "",
+        mystery: team?.mystery ?? ""
+      }));
+
+      while (arr.length < TEAM_COUNT) {
+        arr.push({
+          team: `Team ${arr.length + 1}`,
+          players: "",
+          cornhole: "",
+          kubb: "",
+          shoot22: "",
+          hatchet: "",
+          bucketGolf: "",
+          mystery: ""
+        });
+      }
+      return arr.slice(0, TEAM_COUNT);
+    }
+
+    connectedRef.on("value", (snapshot) => {
+      const connected = snapshot.val() === true;
+      document.getElementById("connectionDot").classList.toggle("connected", connected);
+      document.getElementById("connectionText").textContent = connected
+        ? "Connected to Firebase"
+        : "Offline / reconnecting";
+    });
+
+    teamsRef.on("value", (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        teams = defaultTeams();
+        teamsRef.set(teams);
+        return;
+      }
+
+      teams = normalizeTeams(data);
+
+      // Prevent mobile browsers from losing focus after each keystroke.
+      // While someone is typing, update totals and leaderboard only.
+      if (focusedKey) {
+        updateComputedOnly();
+      } else {
+        render();
+      }
+    }, (error) => {
+      document.getElementById("connectionText").textContent = "Firebase error: " + error.message;
+    });
+
+    function beginEdit(index, field) {
+      focusedKey = `${index}-${field}`;
+    }
+
+    function endEdit(index, field, value) {
+      focusedKey = null;
+      writeTeamField(index, field, value);
+      setTimeout(render, 50);
+    }
+
+    function writeTeamField(index, field, value) {
+      db.ref(`dadOlympics/teams/${index}/${field}`).set(value);
+    }
+
+    function writeScoreDebounced(index, field, value) {
+      teams[index][field] = value;
+      updateComputedOnly();
+
+      const key = `${index}-${field}`;
+      clearTimeout(debounceTimers[key]);
+      debounceTimers[key] = setTimeout(() => {
+        writeTeamField(index, field, value);
+      }, 600);
+    }
+
+    function seedTeams() {
+      if (!confirm("This will ensure there are 8 team rows. Existing scores will remain where possible. Continue?")) return;
+      teamsRef.set(normalizeTeams(teams));
+    }
+
+    function resetAll() {
+      if (!confirm("Reset all team names and scores for everyone?")) return;
+      focusedKey = null;
+      teamsRef.set(defaultTeams());
+    }
+
+    function num(value) {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function bucketGolfPoints(value) {
+      const scoreVsPar = num(value);
+      return scoreVsPar * -1;
+    }
+
+    function teamTotal(team) {
+      return (
+        num(team.cornhole) +
+        num(team.kubb) +
+        num(team.shoot22) +
+        num(team.hatchet) +
+        bucketGolfPoints(team.bucketGolf) +
+        num(team.mystery)
+      );
+    }
+
+    function renderTable() {
+      const body = document.getElementById("tableBody");
+      body.innerHTML = "";
+
+      teams.forEach((team, index) => {
+        const row = document.createElement("tr");
+        const bucketDisplay = bucketGolfPoints(team.bucketGolf);
+        row.innerHTML = `
+          <td><input value="${escapeHtml(team.team)}" onfocus="beginEdit(${index}, 'team')" onblur="endEdit(${index}, 'team', this.value)" /></td>
+          <td><input value="${escapeHtml(team.players)}" onfocus="beginEdit(${index}, 'players')" onblur="endEdit(${index}, 'players', this.value)" placeholder="Player 1 / Player 2" /></td>
+          <td><input type="number" value="${escapeHtml(team.cornhole)}" onfocus="beginEdit(${index}, 'cornhole')" oninput="writeScoreDebounced(${index}, 'cornhole', this.value)" onblur="endEdit(${index}, 'cornhole', this.value)" /></td>
+          <td><input type="number" value="${escapeHtml(team.kubb)}" onfocus="beginEdit(${index}, 'kubb')" oninput="writeScoreDebounced(${index}, 'kubb', this.value)" onblur="endEdit(${index}, 'kubb', this.value)" /></td>
+          <td><input type="number" value="${escapeHtml(team.shoot22)}" onfocus="beginEdit(${index}, 'shoot22')" oninput="writeScoreDebounced(${index}, 'shoot22', this.value)" onblur="endEdit(${index}, 'shoot22', this.value)" /></td>
+          <td><input type="number" value="${escapeHtml(team.hatchet)}" onfocus="beginEdit(${index}, 'hatchet')" oninput="writeScoreDebounced(${index}, 'hatchet', this.value)" onblur="endEdit(${index}, 'hatchet', this.value)" /></td>
+          <td>
+            <input type="number" value="${escapeHtml(team.bucketGolf)}" onfocus="beginEdit(${index}, 'bucketGolf')" oninput="writeScoreDebounced(${index}, 'bucketGolf', this.value)" onblur="endEdit(${index}, 'bucketGolf', this.value)" placeholder="-2, 0, +3" />
+            <div id="bucket-points-${index}" class="small">points: ${bucketDisplay > 0 ? "+" : ""}${bucketDisplay}</div>
+          </td>
+          <td><input type="number" value="${escapeHtml(team.mystery)}" onfocus="beginEdit(${index}, 'mystery')" oninput="writeScoreDebounced(${index}, 'mystery', this.value)" onblur="endEdit(${index}, 'mystery', this.value)" /></td>
+          <td id="total-${index}" class="total">${teamTotal(team)}</td>
+        `;
+        body.appendChild(row);
+      });
+    }
+
+    function updateComputedOnly() {
+      teams.forEach((team, index) => {
+        const totalCell = document.getElementById(`total-${index}`);
+        if (totalCell) totalCell.textContent = teamTotal(team);
+
+        const bucketPoints = document.getElementById(`bucket-points-${index}`);
+        if (bucketPoints) {
+          const bucketDisplay = bucketGolfPoints(team.bucketGolf);
+          bucketPoints.textContent = `points: ${bucketDisplay > 0 ? "+" : ""}${bucketDisplay}`;
+        }
+      });
+      renderLeaderboard();
+    }
+
+    function renderLeaderboard() {
+      const leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = "";
+
+      const ranked = teams
+        .map((team, index) => ({ ...team, index, total: teamTotal(team) }))
+        .sort((a, b) => b.total - a.total);
+
+      ranked.forEach((team, i) => {
+        const card = document.createElement("div");
+        card.className = "rank-card";
+        const players = team.players ? `<div class="small">${escapeHtml(team.players)}</div>` : "";
+        card.innerHTML = `
+          <div>
+            <span class="rank">#${i + 1}</span>
+            <strong>${escapeHtml(team.team || `Team ${team.index + 1}`)}</strong>
+            ${players}
+          </div>
+          <div class="total">${team.total} pts</div>
+        `;
+        leaderboard.appendChild(card);
+      });
+    }
+
+    function render() {
+      renderTable();
+      renderLeaderboard();
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    render();
+  </script>
+</body>
+</html>
